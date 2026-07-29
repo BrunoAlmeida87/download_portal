@@ -408,6 +408,18 @@ tr:hover .row-acts{opacity:1;}
 }
 .bulkbar.on{display:flex;}
 
+.assistbar{
+    display:none;align-items:center;gap:11px;
+    padding:11px 16px;
+    background:color-mix(in srgb,var(--st-warning) 15%, transparent);
+    border-bottom:1px solid color-mix(in srgb,var(--st-warning) 40%,transparent);
+    font-size:12.5px;color:var(--warning-ink);
+}
+.assistbar.on{display:flex;}
+.assistbar > svg{width:18px;height:18px;flex-shrink:0;}
+.assistbar strong{display:block;font-weight:660;}
+.assistbar span{display:block;opacity:.85;line-height:1.4;}
+
 /* ============================================================
    CHARTS
    ============================================================ */
@@ -782,6 +794,17 @@ kbd{
                         </button>
                     </div>
 
+                    <div class="assistbar" id="assistbar">
+                        <svg viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+                        <div class="grow">
+                            <strong id="assistCount"></strong>
+                            <span>O navegador bloqueia a abertura automática de abas fora de um clique seu. Clique no botão para abrir em lote.</span>
+                        </div>
+                        <button class="btn btn-primary btn-sm" id="btnOpenTabs">
+                            <svg viewBox="0 0 24 24"><use href="#i-ext"/></svg> Abrir pendentes em abas
+                        </button>
+                    </div>
+
                     <div class="bulkbar" id="bulkbar">
                         <span id="bulkCount">0 selecionados</span>
                         <div class="grow"></div>
@@ -928,6 +951,53 @@ kbd{
                 </div>
 
                 <div class="card">
+                    <div class="card-head"><h2>Nome e extensão dos arquivos</h2></div>
+                    <div class="card-body">
+                        <p style="margin-top:0;font-size:13px;color:var(--ink-2);line-height:1.65">
+                            O portal nem sempre informa ao navegador o nome do arquivo: o cabeçalho
+                            <code>Content-Disposition</code> só chega ao JavaScript se o servidor o listar
+                            explicitamente em <code>Access-Control-Expose-Headers</code>. Quando isso não acontece,
+                            sobra apenas o código do documento — sem extensão, e o Windows salva como “Arquivo”.
+                        </p>
+                        <p style="font-size:13px;color:var(--ink-2);line-height:1.65">
+                            O DocFlow resolve isso em três camadas, nesta ordem: usa o nome do cabeçalho quando disponível;
+                            deduz pelo tipo MIME da resposta; e, por último, <strong>lê a assinatura binária do próprio
+                            conteúdo</strong> — os primeiros bytes do arquivo. Um PDF começa com <code>%PDF</code>, um DWG com
+                            <code>AC10</code>, um DOCX/XLSX com a assinatura ZIP. Assim o arquivo chega ao disco com a
+                            extensão correta mesmo que o servidor não colabore.
+                        </p>
+                        <div class="note info">
+                            <svg viewBox="0 0 24 24"><use href="#i-info"/></svg>
+                            <div>A coluna <strong>Mensagem</strong> mostra o nome final de cada arquivo salvo —
+                            confira ali se a extensão saiu como esperado.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-head"><h2>Por que os arquivos aparecem depois</h2></div>
+                    <div class="card-body">
+                        <p style="margin-top:0;font-size:13px;color:var(--ink-2);line-height:1.65">
+                            O status “Sucesso” marca o momento em que o documento foi <strong>recebido e conferido
+                            na memória</strong> — a partir daí a escrita em disco fica a cargo do navegador, e é ele
+                            quem decide o instante. Por isso a lista fica verde antes de os arquivos surgirem na pasta.
+                        </p>
+                        <div class="note warn">
+                            <svg viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+                            <div>Ao baixar mais de um punhado de documentos, o Chrome e o Edge exibem a pergunta
+                            <strong>“Fazer download de vários arquivos?”</strong> e <strong>seguram toda a fila até você
+                            permitir</strong>. Se os arquivos não aparecem, procure esse aviso na barra de endereços e
+                            clique em Permitir. Vale marcar o site como permitido para não perguntar de novo.</div>
+                        </div>
+                        <p style="font-size:13px;color:var(--ink-2);line-height:1.65;margin-bottom:0">
+                            As gravações são espaçadas em 300 ms por padrão para o navegador não engasgar. Em lotes
+                            grandes, aumentar esse respiro em <strong>Configurações → Motor de download</strong> costuma
+                            deixar a escrita mais estável.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="card">
                     <div class="card-head"><h2>Publicar no GitHub Pages</h2></div>
                     <div class="card-body">
                         <p style="margin-top:0;font-size:13px;color:var(--ink-2);line-height:1.65">
@@ -942,8 +1012,17 @@ kbd{
                         <div class="note warn">
                             <svg viewBox="0 0 24 24"><use href="#i-alert"/></svg>
                             <div><strong>HTTPS × HTTP:</strong> o Pages serve apenas em HTTPS e a API do portal é HTTP.
-                            O navegador bloqueia esse cruzamento (<em>mixed content</em>), então a confirmação automática não
-                            estará disponível e o DocFlow operará em modo clássico. Continua baixando; deixa de confirmar sozinho.</div>
+                            O navegador bloqueia esse cruzamento (<em>mixed content</em>) e o download direto
+                            <strong>não funciona</strong> — foi por isso que a fila não baixou nada publicada no Pages.
+                            O DocFlow recorre então à abertura em abas; como o navegador só libera várias aberturas
+                            durante um clique seu, os itens ficam marcados e você libera em lotes pelo botão
+                            <strong>“Abrir pendentes em abas”</strong>, que aparece acima da tabela.</div>
+                        </div>
+                        <div class="note good">
+                            <svg viewBox="0 0 24 24"><use href="#i-check"/></svg>
+                            <div><strong>Para ter o download automático de volta:</strong> abra o arquivo direto do disco
+                            ou de um compartilhamento de rede interno (<code>\\servidor\pasta\index.html</code>) — sem HTTPS
+                            no meio, a verificação e a gravação automática voltam a funcionar como na sua máquina.</div>
                         </div>
                         <div class="note bad">
                             <svg viewBox="0 0 24 24"><use href="#i-alert"/></svg>
@@ -1014,6 +1093,14 @@ kbd{
                 <label class="fld">Intervalo entre itens (ms)
                     <input type="number" id="cfgDelay" min="0" max="10000" step="100">
                     <span class="hint">Alivia o servidor</span>
+                </label>
+                <label class="fld">Respiro entre gravações (ms)
+                    <input type="number" id="cfgSaveGap" min="0" max="3000" step="50">
+                    <span class="hint">Espaça a escrita em disco</span>
+                </label>
+                <label class="fld">Abas por lote
+                    <input type="number" id="cfgTabBatch" min="1" max="30">
+                    <span class="hint">Na abertura assistida</span>
                 </label>
             </div>
             <label class="switch">
@@ -1184,6 +1271,8 @@ const DEFAULTS = {
     timeoutSec: 45,
     retries: 1,
     delayMs: 0,
+    saveGapMs: 300,
+    tabBatch: 10,
     backoff: true,
     htmlGuard: true,
     classic: false,
@@ -1354,32 +1443,112 @@ function classify(resp, blob){
         return { ok:false, msg:'Resposta vazia (0 bytes)' };
     return { ok:true };
 }
-function filenameOf(resp, fallback){
+/* ---- nomeação do arquivo ------------------------------------------------
+   O portal frequentemente não expõe o Content-Disposition (o cabeçalho só
+   chega ao JavaScript se o servidor listar em Access-Control-Expose-Headers),
+   então o nome cairia no código puro — sem extensão, e o Windows salva como
+   "Arquivo". A extensão é deduzida em três camadas: cabeçalho, tipo MIME e,
+   por último, a assinatura binária do próprio conteúdo.                     */
+
+const MIME_EXT = {
+    'application/pdf':'pdf',
+    'application/msword':'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'docx',
+    'application/vnd.ms-excel':'xls',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'xlsx',
+    'application/vnd.ms-powerpoint':'ppt',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation':'pptx',
+    'application/zip':'zip', 'application/x-zip-compressed':'zip',
+    'application/x-rar-compressed':'rar', 'application/vnd.rar':'rar',
+    'application/x-7z-compressed':'7z',
+    'application/rtf':'rtf', 'text/rtf':'rtf',
+    'text/plain':'txt', 'text/csv':'csv',
+    'text/xml':'xml', 'application/xml':'xml', 'application/json':'json',
+    'image/jpeg':'jpg', 'image/png':'png', 'image/gif':'gif',
+    'image/tiff':'tif', 'image/bmp':'bmp',
+    'application/acad':'dwg', 'image/vnd.dwg':'dwg', 'image/x-dwg':'dwg',
+    'application/dxf':'dxf', 'image/vnd.dxf':'dxf',
+    'application/postscript':'eps'
+};
+const KNOWN_EXT = /\.(pdf|docx?|xlsx?|pptx?|zip|rar|7z|rtf|txt|csv|xml|json|jpe?g|png|gif|tiff?|bmp|dwg|dxf|eps|dwf|stp|step|igs|iges)$/i;
+
+/* assinatura binária — a fonte mais confiável quando o MIME vem genérico */
+async function sniffExt(blob){
+    try{
+        const buf = new Uint8Array(await blob.slice(0, 16).arrayBuffer());
+        const hex = [...buf].map(b=>b.toString(16).padStart(2,'0')).join('');
+        const asc = String.fromCharCode(...buf);
+        if (asc.startsWith('%PDF'))            return 'pdf';
+        if (hex.startsWith('d0cf11e0a1b11ae1')) return 'doc';   // OLE2 (doc/xls/ppt antigos)
+        if (hex.startsWith('504b0304'))        return 'zip';    // ZIP e derivados OOXML
+        if (hex.startsWith('89504e470d0a1a0a')) return 'png';
+        if (hex.startsWith('ffd8ff'))          return 'jpg';
+        if (asc.startsWith('GIF8'))            return 'gif';
+        if (hex.startsWith('49492a00') || hex.startsWith('4d4d002a')) return 'tif';
+        if (asc.startsWith('{\\rtf'))          return 'rtf';
+        if (hex.startsWith('526172211a07'))    return 'rar';
+        if (hex.startsWith('377abcaf271c'))    return '7z';
+        if (/^AC10\d{2}/.test(asc))            return 'dwg';
+        if (asc.startsWith('BM'))              return 'bmp';
+        if (asc.startsWith('%!PS'))            return 'eps';
+    }catch(e){}
+    return null;
+}
+
+const sanitize = n => String(n).replace(/[\\/:*?"<>|\r\n]+/g, '_').replace(/\s+/g,' ').trim().slice(0,180);
+
+async function buildFilename(resp, blob, code){
+    // 1) Content-Disposition, quando o servidor o expõe
     const cd = resp.headers.get('content-disposition');
     if (cd){
-        const m = /filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(cd);
-        if (m?.[1]){ try{ return decodeURIComponent(m[1]); }catch(e){ return m[1]; } }
+        const m = /filename\*?=(?:UTF-8''|")?([^";]+)"?/i.exec(cd);
+        if (m?.[1]){
+            let n = m[1].trim();
+            try{ n = decodeURIComponent(n); }catch(e){}
+            if (KNOWN_EXT.test(n)) return sanitize(n);
+            const ext = MIME_EXT[(resp.headers.get('content-type')||'').split(';')[0].trim().toLowerCase()]
+                     || await sniffExt(blob);
+            return sanitize(ext ? `${n}.${ext}` : n);
+        }
     }
-    return fallback;
+    // 2) o próprio código já traz extensão?
+    if (KNOWN_EXT.test(code)) return sanitize(code);
+
+    // 3) tipo MIME declarado, e por fim a assinatura do conteúdo
+    const type = (resp.headers.get('content-type')||'').split(';')[0].trim().toLowerCase();
+    let ext = MIME_EXT[type] || null;
+    const sniffed = await sniffExt(blob);
+    // OOXML chega como ZIP na assinatura: o MIME desempata; sem MIME útil, o sniff manda
+    if (!ext || (ext === 'zip' && sniffed && sniffed !== 'zip')) ext = sniffed || ext;
+    return sanitize(ext ? `${code}.${ext}` : code);
 }
+
+/* ---- gravação -----------------------------------------------------------
+   Os salvamentos são serializados com um respiro entre eles: disparar dezenas
+   de âncoras no mesmo instante faz o navegador engasgar e atrasar a escrita. */
+let saveChain = Promise.resolve();
 function saveBlob(blob, name){
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = name || 'documento';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url), 8000);
+    saveChain = saveChain.then(async ()=>{
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = name || 'documento';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(()=>URL.revokeObjectURL(url), 30000);
+        await sleep(Math.max(0, cfg.saveGapMs ?? 300));
+    });
+    return saveChain;
 }
-const openTab = url => !!window.open(url, '_blank');
+const openTab = url => { try{ return !!window.open(url, '_blank', 'noopener'); }catch(e){ return false; } };
 
 async function attempt(item){
     const url = currentUrl(item.doc);
     item.attempts++;
 
-    if (cfg.classic){
-        return openTab(url)
-            ? { status:'aguardando', msg:'Modo clássico — aba aberta, confira a pasta de downloads' }
-            : { status:'falha', msg:'O navegador bloqueou a abertura da aba (pop-up)' };
-    }
+    if (cfg.classic) return viaTab(url);
 
     const ctrl = new AbortController();
     const timer = setTimeout(()=>ctrl.abort('timeout'), Math.max(5, cfg.timeoutSec) * 1000);
@@ -1390,18 +1559,28 @@ async function attempt(item){
         const blob = await resp.blob();
         const verdict = classify(resp, blob);
         if (!verdict.ok) return { status:'falha', msg:verdict.msg };
-        const name = filenameOf(resp, item.doc);
+        const name = await buildFilename(resp, blob, item.doc);
         saveBlob(blob, name);
-        return { status:'sucesso', msg:'Arquivo recebido e conferido', size:blob.size, file:name };
+        return { status:'sucesso', msg:`Salvo como ${name}`, size:blob.size, file:name };
     }catch(err){
         clearTimeout(timer);
         if (ctrl.signal.reason === 'timeout')
             return { status:'falha', msg:`Tempo limite de ${cfg.timeoutSec}s esgotado` };
-        // fetch barrado (CORS / mixed content / rede) — recorre ao modo clássico
-        return openTab(url)
-            ? { status:'aguardando', msg:'Verificação bloqueada pelo navegador — aba aberta, confira manualmente' }
-            : { status:'falha', msg:'Verificação bloqueada e o pop-up também foi impedido' };
+        // fetch barrado (CORS / mixed content / rede) — recorre à abertura em aba
+        return viaTab(url, true);
     }
+}
+
+/* Abertura em aba. Fora de um clique do usuário o navegador bloqueia o
+   window.open, então o item é marcado para abertura assistida em lote. */
+function viaTab(url, blocked){
+    if (openTab(url)){
+        return { status:'aguardando',
+                 msg: blocked ? 'Verificação bloqueada pelo navegador — aba aberta, confira a pasta de downloads'
+                              : 'Modo clássico — aba aberta, confira a pasta de downloads' };
+    }
+    return { status:'aguardando', needsOpen:true,
+             msg:'Pop-up bloqueado — use o botão “Abrir pendentes em abas”' };
 }
 
 async function worker(myToken){
@@ -1425,6 +1604,7 @@ async function worker(myToken){
         item.ms   = elapsed;
         item.msg  = res.msg;
         item.at   = Date.now();
+        item.needsOpen = !!res.needsOpen;
         if (res.size != null){ item.size = res.size; sessionBytes += res.size; }
         if (res.file) item.file = res.file;
 
@@ -1453,6 +1633,31 @@ function resetItem(it){
     it.status = 'pendente';
     it.msg = ''; it.attempts = 0;
     it.size = null; it.ms = null; it.at = null; it.file = '';
+    it.needsOpen = false;
+}
+
+/* Abertura assistida: precisa rodar DENTRO do clique do usuário — é a única
+   janela em que o navegador libera várias aberturas de aba seguidas. */
+function openPendingTabs(){
+    const waiting = queue.filter(q => q.needsOpen);
+    if (!waiting.length){ toast('Nenhum documento aguardando abertura.', 'info'); return; }
+    const batch = waiting.slice(0, Math.max(1, cfg.tabBatch));
+    let opened = 0, blocked = 0;
+    batch.forEach(it=>{
+        if (openTab(currentUrl(it.doc))){
+            it.needsOpen = false;
+            it.msg = 'Aba aberta — confira a pasta de downloads';
+            opened++;
+        } else blocked++;
+    });
+    saveQueue(); scheduleRender();
+    if (opened) logEvent(`${opened} aba(s) aberta(s) manualmente`, 'info');
+    if (blocked){
+        toast(`${opened} aba(s) aberta(s); o navegador barrou ${blocked}. Libere os pop-ups deste site e clique de novo.`, 'warn');
+    } else {
+        const left = queue.filter(q=>q.needsOpen).length;
+        toast(`${opened} aba(s) aberta(s).${left?` Restam ${left} — clique novamente.`:''}`, 'ok');
+    }
 }
 
 async function start(){
@@ -1586,8 +1791,15 @@ function renderAll(){
     renderTable();
     renderSegbar();
     updateRunMeta();
+    renderAssistBar();
     el('navQueueCount').textContent = queue.length;
     if (el('view-painel').classList.contains('active')) renderDashboard();
+}
+function renderAssistBar(){
+    const n = queue.filter(q=>q.needsOpen).length;
+    el('assistbar').classList.toggle('on', n > 0);
+    if (n) el('assistCount').textContent =
+        `${n} documento(s) aguardando abertura manual`;
 }
 
 function filtered(){
@@ -2012,6 +2224,8 @@ function fillSettings(){
     el('cfgTimeout').value  = cfg.timeoutSec;
     el('cfgRetries').value  = cfg.retries;
     el('cfgDelay').value    = cfg.delayMs;
+    el('cfgSaveGap').value  = cfg.saveGapMs;
+    el('cfgTabBatch').value = cfg.tabBatch;
     el('cfgBackoff').checked   = cfg.backoff;
     el('cfgHtmlGuard').checked = cfg.htmlGuard;
     el('cfgClassic').checked   = cfg.classic;
@@ -2035,6 +2249,8 @@ function applySettings(){
     cfg.timeoutSec  = clamp(el('cfgTimeout').value, 5, 300, 45);
     cfg.retries     = clamp(el('cfgRetries').value, 0, 6, 1);
     cfg.delayMs     = clamp(el('cfgDelay').value, 0, 10000, 0);
+    cfg.saveGapMs   = clamp(el('cfgSaveGap').value, 0, 3000, 300);
+    cfg.tabBatch    = clamp(el('cfgTabBatch').value, 1, 30, 10);
     cfg.backoff     = el('cfgBackoff').checked;
     cfg.htmlGuard   = el('cfgHtmlGuard').checked;
     cfg.classic     = el('cfgClassic').checked;
@@ -2192,6 +2408,7 @@ el('btnStop').addEventListener('click', ()=>{
     logEvent('Execução interrompida pelo operador', 'warn');
     toast('Execução interrompida.', 'warn');
 });
+el('btnOpenTabs').addEventListener('click', openPendingTabs);
 el('btnRetryAll').addEventListener('click', ()=>{
     let n = 0;
     queue.forEach(q=>{ if (UNRESOLVED.includes(q.status)){ resetItem(q); n++; } });
