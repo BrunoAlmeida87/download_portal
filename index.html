@@ -251,7 +251,7 @@ label.fld .hint{font-weight:400;font-size:11px;color:var(--ink-muted);line-heigh
     background:var(--surface-2);
 }
 .dropzone.over::after{
-    content:"Solte o arquivo para importar";
+    content:"Solte para importar — apenas a COLUNA A será lida";
     position:absolute;inset:0;
     display:grid;place-items:center;
     background:var(--accent-soft-2);
@@ -711,13 +711,13 @@ kbd{
                         </button>
                         <label class="btn btn-ghost btn-sm" style="margin:0">
                             <svg viewBox="0 0 24 24"><use href="#i-file"/></svg> Importar
-                            <input type="file" id="fileInput" accept=".txt,.csv,.json,.log" hidden multiple>
+                            <input type="file" id="fileInput" accept=".xlsx,.xlsm,.csv,.tsv,.txt,.json,.log" hidden multiple>
                         </label>
                     </div>
                     <div class="card-body">
                         <div class="dropzone" id="dropzone">
                             <textarea id="inputList" spellcheck="false"
-                                placeholder="Cole aqui a lista de documentos.&#10;&#10;Aceita qualquer formato — um por linha, separados por vírgula, ponto e vírgula, tabulação ou espaço. Também funciona colando uma tabela inteira: o extrator isola apenas os códigos.&#10;&#10;Arraste um arquivo .txt / .csv / .json para importar."></textarea>
+                                placeholder="Cole aqui a lista de documentos.&#10;&#10;Aceita qualquer formato — um por linha, separados por vírgula, ponto e vírgula, tabulação ou espaço. Também funciona colando uma tabela inteira: o extrator isola apenas os códigos.&#10;&#10;ARRASTE UMA PLANILHA (.xlsx, .csv) e apenas a COLUNA A será lida — uma célula por documento. Se a primeira célula não tiver números, é tratada como cabeçalho e ignorada."></textarea>
                         </div>
                         <div class="chip-preview" id="chipPreview"></div>
                     </div>
@@ -998,6 +998,50 @@ kbd{
                 </div>
 
                 <div class="card">
+                    <div class="card-head"><h2>Importar planilha — coluna A</h2></div>
+                    <div class="card-body">
+                        <p style="margin-top:0;font-size:13px;color:var(--ink-2);line-height:1.65">
+                            Ao arrastar ou importar um arquivo, o DocFlow lê <strong>somente a coluna A</strong> — uma
+                            célula por documento. As demais colunas são ignoradas, então você pode arrastar a planilha
+                            de controle inteira, com descrição, revisão e responsável ao lado, sem precisar limpar nada antes.
+                        </p>
+                        <ul style="font-size:13px;color:var(--ink-2);line-height:1.65">
+                            <li><strong>.xlsx / .xlsm</strong> — a primeira planilha da pasta de trabalho é lida diretamente,
+                                sem precisar converter para CSV.</li>
+                            <li><strong>.csv / .tsv</strong> — o separador é detectado sozinho (vírgula, ponto e vírgula ou
+                                tabulação) e campos entre aspas são respeitados.</li>
+                            <li><strong>.txt / .log</strong> — o primeiro campo de cada linha.</li>
+                            <li><strong>.json</strong> — uma lista de textos, de listas ou de objetos (nesse caso, a primeira chave).</li>
+                        </ul>
+                        <div class="note info">
+                            <svg viewBox="0 0 24 24"><use href="#i-info"/></svg>
+                            <div>Se a primeira célula da coluna A não contiver nenhum número — como “Documento” ou
+                            “Código” — ela é tratada como cabeçalho e descartada. O aviso de importação informa quando isso acontece.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-head"><h2>Impedir que o PDF abra sozinho</h2></div>
+                    <div class="card-body">
+                        <p style="margin-top:0;font-size:13px;color:var(--ink-2);line-height:1.65">
+                            Por padrão os arquivos são entregues ao navegador rotulados como dados genéricos, o que o
+                            impede de reconhecer um PDF e exibi-lo assim que o download termina. Os bytes e a extensão do
+                            arquivo continuam corretos — ele abre normalmente quando você clicar nele depois.
+                            O comportamento fica em <strong>Configurações → Motor de download → “Salvar sem abrir”</strong>.
+                        </p>
+                        <div class="note warn">
+                            <svg viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+                            <div>Se em algum computador o arquivo <strong>ainda</strong> abrir sozinho, é a preferência do
+                            próprio navegador daquela máquina. No Chrome ou Edge, vá em
+                            <code>chrome://settings/downloads</code> e desmarque a opção de abrir automaticamente
+                            determinados tipos de arquivo — ou clique com o botão direito no item da barra de downloads e
+                            desmarque <strong>“Sempre abrir esse tipo de arquivo”</strong>.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
                     <div class="card-head"><h2>Publicar no GitHub Pages</h2></div>
                     <div class="card-body">
                         <p style="margin-top:0;font-size:13px;color:var(--ink-2);line-height:1.65">
@@ -1110,6 +1154,10 @@ kbd{
             <label class="switch">
                 <input type="checkbox" id="cfgHtmlGuard">
                 <span class="switch-txt"><strong>Rejeitar páginas de erro</strong><span>Trata resposta em HTML como falha, e não como documento válido</span></span>
+            </label>
+            <label class="switch">
+                <input type="checkbox" id="cfgForceSave">
+                <span class="switch-txt"><strong>Salvar sem abrir</strong><span>Impede o navegador de exibir o PDF ao terminar o download. Desligue só se quiser que os arquivos abram sozinhos</span></span>
             </label>
             <label class="switch">
                 <input type="checkbox" id="cfgClassic">
@@ -1275,6 +1323,7 @@ const DEFAULTS = {
     tabBatch: 10,
     backoff: true,
     htmlGuard: true,
+    forceSave: true,
     classic: false,
     pattern: '[A-Za-z0-9][A-Za-z0-9._\\-\\/]{2,}',
     dedupe: true,
@@ -1529,7 +1578,13 @@ async function buildFilename(resp, blob, code){
 let saveChain = Promise.resolve();
 function saveBlob(blob, name){
     saveChain = saveChain.then(async ()=>{
-        const url = URL.createObjectURL(blob);
+        /* Reetiquetar como octet-stream mantém os bytes intactos mas impede o
+           navegador de reconhecer um PDF e exibi-lo/abri-lo ao terminar — a
+           extensão no nome do arquivo continua correta para o sistema. */
+        const payload = (cfg.forceSave ?? true)
+            ? new Blob([blob], { type:'application/octet-stream' })
+            : blob;
+        const url = URL.createObjectURL(payload);
         const a = document.createElement('a');
         a.href = url;
         a.download = name || 'documento';
@@ -2228,6 +2283,7 @@ function fillSettings(){
     el('cfgTabBatch').value = cfg.tabBatch;
     el('cfgBackoff').checked   = cfg.backoff;
     el('cfgHtmlGuard').checked = cfg.htmlGuard;
+    el('cfgForceSave').checked = cfg.forceSave ?? true;
     el('cfgClassic').checked   = cfg.classic;
     el('cfgPattern').value  = cfg.pattern;
     el('cfgDedupe').checked = cfg.dedupe;
@@ -2253,6 +2309,7 @@ function applySettings(){
     cfg.tabBatch    = clamp(el('cfgTabBatch').value, 1, 30, 10);
     cfg.backoff     = el('cfgBackoff').checked;
     cfg.htmlGuard   = el('cfgHtmlGuard').checked;
+    cfg.forceSave   = el('cfgForceSave').checked;
     cfg.classic     = el('cfgClassic').checked;
     cfg.pattern     = el('cfgPattern').value.trim() || DEFAULTS.pattern;
     cfg.dedupe      = el('cfgDedupe').checked;
@@ -2382,16 +2439,179 @@ const dz = el('dropzone');
 ['dragleave','drop'].forEach(ev=>dz.addEventListener(ev, e=>{ e.preventDefault(); dz.classList.remove('over'); }));
 dz.addEventListener('drop', e=>readFiles(e.dataTransfer.files));
 el('fileInput').addEventListener('change', e=>{ readFiles(e.target.files); e.target.value=''; });
-function readFiles(files){
-    [...files].forEach(f=>{
-        const r = new FileReader();
-        r.onload = ()=>{
-            el('inputList').value += (el('inputList').value.trim() ? '\n' : '') + r.result;
+
+async function readFiles(files){
+    for (const f of [...files]){
+        try{
+            let values = await columnA(f);
+            if (!values.length){
+                toast(`“${f.name}” não trouxe nenhum valor na coluna A.`, 'warn');
+                continue;
+            }
+            // primeira célula sem nenhum dígito é tratada como cabeçalho
+            let header = '';
+            if (!/\d/.test(values[0])){ header = values.shift(); }
+            el('inputList').value += (el('inputList').value.trim() ? '\n' : '') + values.join('\n');
             refreshPreview();
-            toast(`“${f.name}” importado.`, 'ok');
-        };
-        r.readAsText(f);
-    });
+            const note = header ? ` (cabeçalho “${header}” ignorado)` : '';
+            toast(`“${f.name}”: ${values.length} valor(es) lido(s) da coluna A${note}.`, 'ok');
+            logEvent(`Importado “${f.name}” — ${values.length} valor(es) da coluna A${note}`, 'info');
+        }catch(err){
+            toast(`“${f.name}”: ${err.message}`, 'err');
+            logEvent(`Falha ao importar “${f.name}”: ${err.message}`, 'err');
+        }
+    }
+}
+
+/* ---- leitura da coluna A ------------------------------------------------
+   Planilhas .xlsx são lidas de verdade (ZIP + XML, sem biblioteca externa);
+   CSV/TSV/TXT usam o primeiro campo de cada linha.                          */
+async function columnA(file){
+    const name = file.name.toLowerCase();
+    if (/\.(xlsx|xlsm)$/.test(name)) return xlsxColumnA(await file.arrayBuffer());
+    const text = await file.text();
+    if (name.endsWith('.json')) return jsonColumnA(text);
+    return delimitedColumnA(text);
+}
+
+function delimitedColumnA(text){
+    const lines = text.split(/\r\n|\r|\n/).filter(l=>l.trim());
+    if (!lines.length) return [];
+    // delimitador = o mais frequente entre tabulação, ponto e vírgula e vírgula
+    const sample = lines.slice(0, 40).join('\n');
+    const score = d => (sample.split(d).length - 1);
+    const delim = [['\t',score('\t')], [';',score(';')], [',',score(',')]]
+        .sort((a,b)=>b[1]-a[1])
+        .filter(x=>x[1] > 0)[0]?.[0] || null;
+    return lines.map(l=>firstField(l, delim).trim()).filter(Boolean);
+}
+
+/* respeita aspas do CSV: "COD,123";resto  ->  COD,123 */
+function firstField(line, delim){
+    if (line[0] === '"'){
+        let out = '', i = 1;
+        while (i < line.length){
+            if (line[i] === '"'){
+                if (line[i+1] === '"'){ out += '"'; i += 2; continue; }
+                break;
+            }
+            out += line[i++];
+        }
+        return out;
+    }
+    if (!delim) return line;
+    const at = line.indexOf(delim);
+    return at >= 0 ? line.slice(0, at) : line;
+}
+
+function jsonColumnA(text){
+    const data = JSON.parse(text);
+    if (!Array.isArray(data)) throw new Error('o JSON precisa ser uma lista');
+    return data.map(row=>{
+        if (row == null) return '';
+        if (Array.isArray(row)) return String(row[0] ?? '');
+        if (typeof row === 'object'){
+            const k = Object.keys(row)[0];
+            return k ? String(row[k] ?? '') : '';
+        }
+        return String(row);
+    }).map(s=>s.trim()).filter(Boolean);
+}
+
+/* ---- .xlsx: descompacta o ZIP e lê a primeira planilha ------------------ */
+async function xlsxColumnA(buffer){
+    if (typeof DecompressionStream === 'undefined')
+        throw new Error('este navegador não consegue abrir .xlsx — salve como CSV');
+    const zip = openZip(new Uint8Array(buffer));
+    const sheet = pickSheet(zip);
+    const xml = await unzipText(zip, sheet);
+    const shared = zip.entries.has('xl/sharedStrings.xml')
+        ? sharedStrings(await unzipText(zip, 'xl/sharedStrings.xml'))
+        : [];
+    return sheetColumnA(xml, shared);
+}
+
+function openZip(u8){
+    const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+    let eocd = -1;
+    for (let i = u8.length - 22; i >= Math.max(0, u8.length - 66000); i--){
+        if (dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error('não parece um .xlsx válido');
+    const count = dv.getUint16(eocd + 10, true);
+    let off = dv.getUint32(eocd + 16, true);
+    const entries = new Map();
+    for (let i = 0; i < count; i++){
+        if (dv.getUint32(off, true) !== 0x02014b50) break;
+        const method   = dv.getUint16(off + 10, true);
+        const compSize = dv.getUint32(off + 20, true);
+        const nameLen  = dv.getUint16(off + 28, true);
+        const extraLen = dv.getUint16(off + 30, true);
+        const cmtLen   = dv.getUint16(off + 32, true);
+        const localOff = dv.getUint32(off + 42, true);
+        const name = new TextDecoder().decode(u8.subarray(off + 46, off + 46 + nameLen));
+        entries.set(name, { method, compSize, localOff });
+        off += 46 + nameLen + extraLen + cmtLen;
+    }
+    return { u8, dv, entries };
+}
+
+async function unzipText(zip, name){
+    const e = zip.entries.get(name);
+    if (!e) throw new Error(`componente ausente na planilha (${name})`);
+    const nameLen  = zip.dv.getUint16(e.localOff + 26, true);
+    const extraLen = zip.dv.getUint16(e.localOff + 28, true);
+    const start = e.localOff + 30 + nameLen + extraLen;
+    const data = zip.u8.subarray(start, start + e.compSize);
+    if (e.method === 0) return new TextDecoder().decode(data);
+    if (e.method !== 8) throw new Error('compressão da planilha não suportada');
+    const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    return await new Response(stream).text();
+}
+
+function pickSheet(zip){
+    if (zip.entries.has('xl/worksheets/sheet1.xml')) return 'xl/worksheets/sheet1.xml';
+    const first = [...zip.entries.keys()]
+        .filter(n=>/^xl\/worksheets\/.+\.xml$/.test(n)).sort()[0];
+    if (!first) throw new Error('nenhuma planilha encontrada no arquivo');
+    return first;
+}
+
+const unxml = s => String(s)
+    .replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+    .replace(/&quot;/g,'"').replace(/&apos;/g,"'")
+    .replace(/&#x([0-9a-f]+);/gi,(_,h)=>String.fromCodePoint(parseInt(h,16)))
+    .replace(/&#(\d+);/g,(_,d)=>String.fromCodePoint(+d))
+    .replace(/&amp;/g,'&');
+
+function sharedStrings(xml){
+    return [...xml.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)].map(m=>
+        unxml([...m[1].matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(t=>t[1]).join('')));
+}
+
+function sheetColumnA(xml, shared){
+    const out = [];
+    const cells = /<c\b([^>]*?)\/>|<c\b([^>]*?)>([\s\S]*?)<\/c>/g;
+    let m;
+    while ((m = cells.exec(xml))){
+        const attrs = m[1] ?? m[2] ?? '';
+        const body  = m[3] ?? '';
+        const ref = /\br="([A-Z]+)\d+"/.exec(attrs);
+        if (!ref || ref[1] !== 'A') continue;          // só a coluna A
+        const type = /\bt="([^"]+)"/.exec(attrs)?.[1];
+        let val;
+        if (type === 's'){
+            const i = parseInt(/<v>([\s\S]*?)<\/v>/.exec(body)?.[1] ?? '-1', 10);
+            val = shared[i] ?? '';
+        } else if (type === 'inlineStr'){
+            val = unxml([...body.matchAll(/<t\b[^>]*>([\s\S]*?)<\/t>/g)].map(t=>t[1]).join(''));
+        } else {
+            val = unxml(/<v>([\s\S]*?)<\/v>/.exec(body)?.[1] ?? '');
+        }
+        val = val.trim();
+        if (val) out.push(val);
+    }
+    return out;
 }
 
 // motor
